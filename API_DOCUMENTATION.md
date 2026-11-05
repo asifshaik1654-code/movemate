@@ -219,48 +219,88 @@ Deletes a task.
 ## 5. Room Management Endpoints
 
 ### `GET /moves/:moveId/rooms`
-Lists all rooms configured for a moving plan with counts of boxes and items.
+Lists all rooms configured for a moving plan with live packing progress metrics.
+- **Access:** Viewer, Editor, or Owner
 - **Response (200 OK):**
 ```json
 {
   "success": true,
-  "message": "Rooms retrieved",
+  "message": "Rooms retrieved successfully",
   "data": [
     {
       "_id": "6729e789...",
       "name": "Kitchen",
       "floor": "Ground Floor",
-      "colorCode": "#3B82F6",
-      "boxCount": 5,
-      "itemCount": 24,
-      "packedItemCount": 18
+      "colorCode": "#F59E0B",
+      "stats": {
+        "totalBoxes": 3,
+        "packedBoxes": 2,
+        "totalItems": 15,
+        "packedItems": 12,
+        "packingProgress": 80
+      }
     }
   ]
 }
 ```
 
 ### `POST /moves/:moveId/rooms`
-Creates a new room.
-- **Request Body:** `{ "name": "Master Bedroom", "floor": "2nd Floor", "colorCode": "#10B981" }`
-- **Response (201 Created)**
+Creates a new room inside a moving plan. Names are strictly unique per move.
+- **Access:** Editor or Owner
+- **Request Body:**
+```json
+{
+  "name": "Master Bedroom",
+  "floor": "2nd Floor",
+  "colorCode": "#10B981"
+}
+```
+- **Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Room created successfully",
+  "data": {
+    "_id": "6729e789...",
+    "moveId": "6729c123...",
+    "name": "Master Bedroom",
+    "floor": "2nd Floor",
+    "colorCode": "#10B981",
+    "createdAt": "2026-11-05T08:00:00.000Z"
+  }
+}
+```
+
+### `GET /rooms/:roomId`
+Returns a single room with its live packing statistics.
+- **Access:** Viewer, Editor, or Owner
+- **Response (200 OK):** Contains room fields and `{ totalBoxes, packedBoxes, totalItems, packedItems, packingProgress }`.
 
 ### `PATCH /rooms/:roomId`
-Updates room details.
+Updates room name, floor, or color code.
+- **Access:** Editor or Owner
+- **Request Body (all optional):** `{ "name": "Primary Suite", "colorCode": "#6366F1" }`
+- **Response (200 OK)**
 
 ### `DELETE /rooms/:roomId`
-Deletes a room safely. Fails or warns if boxes or inventory items are still assigned.
+Safely deletes a room.
+- **Access:** Editor or Owner
+- **Safety Rule:** Returns `409 Conflict` if boxes are still assigned to this room to prevent orphaned belongings. When no boxes remain, deletes the room and cleans up any unassigned inventory items.
+- **Response (200 OK):** `{ "success": true, "message": "Room deleted successfully", "data": { "deleted": true, "roomId": "..." } }`
 
 ---
 
 ## 6. Box Management Endpoints
 
 ### `GET /moves/:moveId/boxes`
-Lists boxes with room filter and status filter.
-- **Query Params:** `roomId`, `status`, `isFragile`, `isPriority`, `search`
-- **Response (200 OK)**
+Lists boxes with filtering, label search, and pagination.
+- **Access:** Viewer, Editor, or Owner
+- **Query Params:** `roomId`, `status`, `isFragile`, `isPriority`, `search`, `page`, `limit`
+- **Response (200 OK):** `{ "boxes": [...], "pagination": { "total": 12, "page": 1, "limit": 50, "pages": 1 } }`
 
 ### `POST /moves/:moveId/boxes`
-Creates a box, auto-increments the box number, generates unique label (e.g. `BOX-KIT-001`), and generates QR code data payload.
+Creates a box, auto-increments the move's box counter, generates a deterministic label (e.g. `BOX-KIT-001`), and generates a Base64 PNG DataURL QR code.
+- **Access:** Editor or Owner
 - **Request Body:**
 ```json
 {
@@ -270,28 +310,76 @@ Creates a box, auto-increments the box number, generates unique label (e.g. `BOX
   "isPriority": true
 }
 ```
-- **Response (201 Created):** Contains box details and `qrCodeData` (Base64 DataURL or payload string).
+- **QR Code Security:** Encodes `{ app: "MoveMate", boxLabel, moveId, boxId }` — zero sensitive credentials, auth tokens, or passwords are ever exposed.
+- **Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Box created successfully",
+  "data": {
+    "_id": "6729f100...",
+    "moveId": "6729c123...",
+    "roomId": { "_id": "6729e789...", "name": "Kitchen", "colorCode": "#F59E0B" },
+    "boxNumber": 1,
+    "boxLabel": "BOX-KIT-001",
+    "description": "Everyday porcelain dishes and glassware",
+    "isFragile": true,
+    "isPriority": true,
+    "status": "Not Started",
+    "qrCodeData": "data:image/png;base64,iVBORw0KGgoAAAANSUh..."
+  }
+}
+```
 
 ### `GET /boxes/:boxId`
-Returns full box details, including list of contained inventory items.
+Returns complete box details with populated array of inventory items inside it.
+- **Access:** Viewer, Editor, or Owner
+- **Response (200 OK):** Box details plus `items: [...]`.
 
 ### `PATCH /boxes/:boxId`
-Updates box status (`Packing`, `Packed`, `Loaded`, `In Transit`, `Delivered`, `Missing`), description, or room.
+Updates box status, description, or assigned room.
+- **Access:** Editor or Owner
+- **State Machine Enforcement:** Status transitions are validated:
+  - `Not Started` → `Packing` or `Missing`
+  - `Packing` → `Packed` or `Missing`
+  - `Packed` → `Loaded` or `Missing`
+  - `Loaded` → `In Transit` or `Missing`
+  - `In Transit` → `Delivered` or `Missing`
+  - `Missing` → `Delivered` (recovered)
+  - Invalid transitions reject with `400 Bad Request`.
+- **Response (200 OK)**
 
 ### `DELETE /boxes/:boxId`
-Deletes a box; disassociates items from the deleted box.
+Safely removes a box.
+- **Access:** Editor or Owner
+- **Data Integrity:** Disassociates contained inventory items (`boxId = null`, `isPacked = false`) without deleting the items themselves.
+- **Response (200 OK)**
 
 ---
 
 ## 7. Inventory Management Endpoints
 
 ### `GET /rooms/:roomId/items`
-Lists inventory items belonging to a room.
-- **Query Params:** `boxId` (or `unpacked=true`), `search`
-- **Response (200 OK)**
+Lists inventory items belonging to a room with search and packing filters.
+- **Access:** Viewer, Editor, or Owner
+- **Query Params:** `search`, `boxId` (or `"none"`), `isPacked` (`true`/`false`), `page`, `limit`
+- **Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Items retrieved successfully",
+  "data": {
+    "room": { "_id": "6729e789...", "name": "Kitchen" },
+    "items": [...],
+    "metrics": { "total": 12, "unpacked": 3 },
+    "pagination": { "total": 12, "page": 1, "limit": 50, "pages": 1 }
+  }
+}
+```
 
 ### `POST /rooms/:roomId/items`
-Adds an item to a room's inventory.
+Adds a new item to a room's inventory.
+- **Access:** Editor or Owner
 - **Request Body:**
 ```json
 {
@@ -299,17 +387,29 @@ Adds an item to a room's inventory.
   "quantity": 1,
   "isFragile": true,
   "isPacked": false,
-  "boxId": "6729f123...",
+  "boxId": "6729f100...",
   "estimatedValue": 80
 }
 ```
 - **Response (201 Created)**
 
+### `GET /items/:itemId`
+Returns a single inventory item with populated room and box metadata.
+- **Access:** Viewer, Editor, or Owner
+- **Response (200 OK)**
+
 ### `PATCH /items/:itemId`
-Updates item packing status, quantity, or box assignment.
+Updates an item's details.
+- **Access:** Editor or Owner
+- **Auto-Packing Behavior:**
+  - Assigning `boxId` automatically sets `isPacked = true`.
+  - Setting `boxId = null` automatically resets `isPacked = false`.
+- **Response (200 OK)**
 
 ### `DELETE /items/:itemId`
-Removes an inventory item.
+Removes an inventory item with audit logging.
+- **Access:** Editor or Owner
+- **Response (200 OK)**
 
 ---
 

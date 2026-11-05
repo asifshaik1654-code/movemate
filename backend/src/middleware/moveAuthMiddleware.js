@@ -129,6 +129,63 @@ const checkTaskAccess = (requiredRole = ROLES.EDITOR) => {
 };
 
 /**
+ * Reusable helper: resolve parent moveId from a child resource and enforce access.
+ * @param {string} paramName - name of the route param (e.g. 'roomId', 'boxId', 'itemId')
+ * @param {Function} findParentMoveId - async fn(id) => string moveId
+ * @param {string} entityLabel - human label for error messages
+ * @param {'Viewer'|'Editor'|'Owner'} requiredRole
+ */
+const checkChildResourceAccess = (paramName, findParentMoveId, entityLabel, requiredRole = ROLES.EDITOR) => {
+  return asyncHandler(async (req, res, next) => {
+    const resourceId = req.params[paramName];
+
+    if (!resourceId || !mongoose.Types.ObjectId.isValid(resourceId)) {
+      return next(new ApiError(400, `Invalid ${entityLabel} ID format`));
+    }
+
+    let moveId;
+    try {
+      moveId = await findParentMoveId(resourceId);
+    } catch (err) {
+      return next(err);
+    }
+
+    if (!moveId) {
+      return next(new ApiError(404, `${entityLabel} not found`));
+    }
+
+    const move = await Move.findById(moveId);
+    if (!move) {
+      return next(new ApiError(404, 'Parent moving plan not found'));
+    }
+
+    if (move.userId.equals(req.user._id)) {
+      req.move = move;
+      req.userMoveRole = ROLES.OWNER;
+      return next();
+    }
+
+    const membership = await MoveMember.findOne({ moveId: move._id, userId: req.user._id });
+    if (!membership) {
+      return next(new ApiError(403, `You do not have access to this ${entityLabel.toLowerCase()}`));
+    }
+
+    const userWeight = ROLE_HIERARCHY[membership.role] || 0;
+    const requiredWeight = ROLE_HIERARCHY[requiredRole] || 2;
+
+    if (userWeight < requiredWeight) {
+      return next(
+        new ApiError(403, `Action requires '${requiredRole}' privileges. Your current role is '${membership.role}'.`)
+      );
+    }
+
+    req.move = move;
+    req.userMoveRole = membership.role;
+    next();
+  });
+};
+
+/**
  * Convenience middleware: Enforce Owner only
  */
 const requireMoveOwner = checkMoveAccess(ROLES.OWNER);
@@ -136,5 +193,6 @@ const requireMoveOwner = checkMoveAccess(ROLES.OWNER);
 module.exports = {
   checkMoveAccess,
   checkTaskAccess,
+  checkChildResourceAccess,
   requireMoveOwner
 };

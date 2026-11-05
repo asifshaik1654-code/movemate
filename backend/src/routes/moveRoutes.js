@@ -15,12 +15,17 @@ const {
   deleteMove
 } = require('../controllers/moveController');
 const { moveTaskRouter } = require('./taskRoutes');
+const { moveRoomRouter } = require('./roomRoutes');
+const { moveBoxRouter } = require('./boxRoutes');
 const { ROLES } = require('../constants/roles');
 
 const router = express.Router();
 
-// Mount nested task routes: /api/v1/moves/:moveId/tasks
+// Mount nested sub-routers BEFORE the authenticate middleware
+// (each sub-router applies its own authenticate internally)
 router.use('/:moveId/tasks', moveTaskRouter);
+router.use('/:moveId/rooms', moveRoomRouter);
+router.use('/:moveId/boxes', moveBoxRouter);
 
 // All move routes require authentication
 router.use(authenticate);
