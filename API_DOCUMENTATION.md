@@ -378,3 +378,4 @@ Deletes a booking record.
 
 ### `GET /moves/:moveId/activity`
 Returns the recent audit timeline (who did what, and when) with pagination.
+
