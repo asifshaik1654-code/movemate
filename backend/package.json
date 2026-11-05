@@ -6,10 +6,11 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node tests/health.test.js && node tests/models.test.js && node tests/auth.test.js",
+    "test": "node tests/health.test.js && node tests/models.test.js && node tests/auth.test.js && node tests/moves-tasks.test.js",
     "test:health": "node tests/health.test.js",
     "test:models": "node tests/models.test.js",
-    "test:auth": "node tests/auth.test.js"
+    "test:auth": "node tests/auth.test.js",
+    "test:moves": "node tests/moves-tasks.test.js"
   },
   "keywords": [
     "movemate",
