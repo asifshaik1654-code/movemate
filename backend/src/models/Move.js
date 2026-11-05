@@ -57,3 +57,4 @@ moveSchema.index({ userId: 1, moveDate: 1 });
 const Move = mongoose.model('Move', moveSchema);
 
 module.exports = Move;
+

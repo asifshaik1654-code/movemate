@@ -68,3 +68,4 @@ boxSchema.index({ roomId: 1, status: 1 });
 const Box = mongoose.model('Box', boxSchema);
 
 module.exports = Box;
+

@@ -60,3 +60,4 @@ expenseSchema.index({ moveId: 1, category: 1 });
 const Expense = mongoose.model('Expense', expenseSchema);
 
 module.exports = Expense;
+

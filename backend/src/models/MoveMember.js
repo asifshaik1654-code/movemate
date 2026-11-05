@@ -39,3 +39,4 @@ moveMemberSchema.index({ moveId: 1, userId: 1 }, { unique: true });
 const MoveMember = mongoose.model('MoveMember', moveMemberSchema);
 
 module.exports = MoveMember;
+

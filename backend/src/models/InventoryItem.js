@@ -64,3 +64,4 @@ inventoryItemSchema.index({ roomId: 1, isPacked: 1 });
 const InventoryItem = mongoose.model('InventoryItem', inventoryItemSchema);
 
 module.exports = InventoryItem;
+

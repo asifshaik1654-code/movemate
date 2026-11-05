@@ -71,3 +71,4 @@ serviceBookingSchema.index({ moveId: 1, status: 1 });
 const ServiceBooking = mongoose.model('ServiceBooking', serviceBookingSchema);
 
 module.exports = ServiceBooking;
+

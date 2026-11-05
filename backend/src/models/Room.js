@@ -37,3 +37,4 @@ roomSchema.index({ moveId: 1, name: 1 }, { unique: true });
 const Room = mongoose.model('Room', roomSchema);
 
 module.exports = Room;
+

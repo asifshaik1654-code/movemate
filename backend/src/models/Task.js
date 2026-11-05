@@ -80,3 +80,4 @@ taskSchema.index({ assignedTo: 1, status: 1 });
 const Task = mongoose.model('Task', taskSchema);
 
 module.exports = Task;
+
