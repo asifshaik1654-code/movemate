@@ -6,14 +6,15 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node tests/health.test.js && node tests/models.test.js && node tests/auth.test.js && node tests/moves-tasks.test.js && node tests/rooms-boxes-inventory.test.js && node tests/collaboration.test.js && node tests/dashboard-tracker-budget.test.js",
+    "test": "node tests/health.test.js && node tests/models.test.js && node tests/auth.test.js && node tests/moves-tasks.test.js && node tests/rooms-boxes-inventory.test.js && node tests/collaboration.test.js && node tests/dashboard-tracker-budget.test.js && node tests/e2e-verification.test.js",
     "test:health": "node tests/health.test.js",
     "test:models": "node tests/models.test.js",
     "test:auth": "node tests/auth.test.js",
     "test:moves": "node tests/moves-tasks.test.js",
     "test:rooms": "node tests/rooms-boxes-inventory.test.js",
     "test:members": "node tests/collaboration.test.js",
-    "test:dashboard": "node tests/dashboard-tracker-budget.test.js"
+    "test:dashboard": "node tests/dashboard-tracker-budget.test.js",
+    "test:e2e": "node tests/e2e-verification.test.js"
   },
   "keywords": [
     "movemate",

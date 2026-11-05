@@ -1,0 +1,588 @@
+{
+  "info": {
+    "_postman_id": "movemate-api-collection-v1",
+    "name": "MoveMate REST API Collection",
+    "description": "Complete Postman collection for MoveMate – Intelligent Home Moving Coordinator API. Covers authentication, moves, tasks, rooms, boxes, QR codes, inventory, collaboration, readiness dashboard, moving day tracker, expenses, service bookings, and activity logs.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "00. System & Health",
+      "item": [
+        {
+          "name": "API Welcome Message",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "http://localhost:5000/", "protocol": "http", "host": ["localhost"], "port": "5000", "path": [""] }
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01. Authentication",
+      "item": [
+        {
+          "name": "Register User (Owner)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('token', json.data.token);",
+                  "    pm.test('User registered & token stored', function() {",
+                  "        pm.expect(json.data.token).to.be.a('string');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Alex Developer\",\n  \"email\": \"alex.dev@movemate.local\",\n  \"password\": \"Password123!\",\n  \"phone\": \"+1 555-0199\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] }
+          }
+        },
+        {
+          "name": "Register Collaborator (Helper)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('collaboratorToken', json.data.token);",
+                  "    pm.environment.set('collaboratorEmail', json.data.user.email);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jordan Helper\",\n  \"email\": \"jordan.helper@movemate.local\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] }
+          }
+        },
+        {
+          "name": "Login (Owner)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('token', json.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"alex.dev@movemate.local\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Get Current Profile (Me)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/auth/me", "host": ["{{baseUrl}}"], "path": ["auth", "me"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Moving Plans",
+      "item": [
+        {
+          "name": "Create Moving Plan",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('moveId', json.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Relocation to Seattle Tech Hub\",\n  \"moveDate\": \"2026-12-15T09:00:00.000Z\",\n  \"currentAddress\": \"742 Evergreen Terrace, Springfield\",\n  \"destinationAddress\": \"400 Pine Street, Seattle, WA\",\n  \"notes\": \"Fragile monitor and workstation setup requires extra cushioning.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/moves", "host": ["{{baseUrl}}"], "path": ["moves"] }
+          }
+        },
+        {
+          "name": "List User's Moves",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/moves?page=1&limit=10", "host": ["{{baseUrl}}"], "path": ["moves"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "10" }] }
+          }
+        },
+        {
+          "name": "Get Move by ID",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/moves/{{moveId}}", "host": ["{{baseUrl}}"], "path": ["moves", "{{moveId}}"] }
+          }
+        },
+        {
+          "name": "Update Move",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Updated packing instructions for specialized IT equipment.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/moves/{{moveId}}", "host": ["{{baseUrl}}"], "path": ["moves", "{{moveId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Rooms",
+      "item": [
+        {
+          "name": "Create Room (Living Room)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('roomId', json.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Living Room\",\n  \"floor\": \"1st Floor\",\n  \"colorCode\": \"#4f46e5\",\n  \"notes\": \"Contains OLED TV, soundbar and book collection.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/moves/{{moveId}}/rooms", "host": ["{{baseUrl}}"], "path": ["moves", "{{moveId}}", "rooms"] }
+          }
+        },
+        {
+          "name": "List Rooms with Packing Progress",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/moves/{{moveId}}/rooms", "host": ["{{baseUrl}}"], "path": ["moves", "{{moveId}}", "rooms"] }
+          }
+        },
+        {
+          "name": "Update Room",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"floor\": \"Ground Floor\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/rooms/{{roomId}}", "host": ["{{baseUrl}}"], "path": ["rooms", "{{roomId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Boxes & QR Codes",
+      "item": [
+        {
+          "name": "Create Box in Room",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('boxId', json.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": \"{{roomId}}\",\n  \"description\": \"Home Theater Electronics & Cables\",\n  \"isFragile\": true,\n  \"isPriority\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/moves/{{moveId}}/boxes", "host": ["{{baseUrl}}"], "path": ["moves", "{{moveId}}", "boxes"] }
+          }
+        },
+        {
+          "name": "List Boxes with Filtering",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/moves/{{moveId}}/boxes?roomId={{roomId}}&status=Packing", "host": ["{{baseUrl}}"], "path": ["moves", "{{moveId}}", "boxes"], "query": [{ "key": "roomId", "value": "{{roomId}}" }, { "key": "status", "value": "Packing" }] }
+          }
+        },
+        {
+          "name": "Get Box by ID (Includes Base64 QR Code)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/boxes/{{boxId}}", "host": ["{{baseUrl}}"], "path": ["boxes", "{{boxId}}"] }
+          }
+        },
+        {
+          "name": "Update Box Status (Lifecycle Transition)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Packed\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/boxes/{{boxId}}", "host": ["{{baseUrl}}"], "path": ["boxes", "{{boxId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Inventory Items",
+      "item": [
+        {
+          "name": "Create Inventory Item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('itemId', json.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sonos Beam Soundbar Gen 2\",\n  \"boxId\": \"{{boxId}}\",\n  \"quantity\": 1,\n  \"estimatedValue\": 449,\n  \"isFragile\": true,\n  \"notes\": \"Pack with original power cord and HDMI eARC cable.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/rooms/{{roomId}}/items", "host": ["{{baseUrl}}"], "path": ["rooms", "{{roomId}}", "items"] }
+          }
+        },
+        {
+          "name": "List Room Inventory (with Search)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/rooms/{{roomId}}/items?search=Soundbar", "host": ["{{baseUrl}}"], "path": ["rooms", "{{roomId}}", "items"], "query": [{ "key": "search", "value": "Soundbar" }] }
+          }
+        },
+        {
+          "name": "Update Inventory Item",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isPacked\": true\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/items/{{itemId}}", "host": ["{{baseUrl}}"], "path": ["items", "{{itemId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Tasks & Checklist",
+      "item": [
+        {
+          "name": "Create Essential Task",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('taskId', json.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Confirm Moving Truck Insurance\",\n  \"description\": \"Review commercial vehicle liability and goods in transit policy limits.\",\n  \"priority\": \"High\",\n  \"isEssential\": true,\n  \"dueDate\": \"2026-12-01T18:00:00.000Z\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/moves/{{moveId}}/tasks", "host": ["{{baseUrl}}"], "path": ["moves", "{{moveId}}", "tasks"] }
+          }
+        },
+        {
+          "name": "List Tasks (Filter by Priority)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/moves/{{moveId}}/tasks?priority=High", "host": ["{{baseUrl}}"], "path": ["moves", "{{moveId}}", "tasks"], "query": [{ "key": "priority", "value": "High" }] }
+          }
+        },
+        {
+          "name": "Complete Task",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Completed\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/tasks/{{taskId}}", "host": ["{{baseUrl}}"], "path": ["tasks", "{{taskId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. Collaboration & Members",
+      "item": [
+        {
+          "name": "Invite Collaborator",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('memberId', json.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{collaboratorEmail}}\",\n  \"role\": \"Editor\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/moves/{{moveId}}/members", "host": ["{{baseUrl}}"], "path": ["moves", "{{moveId}}", "members"] }
+          }
+        },
+        {
+          "name": "List Members & Task Completion Velocity",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/moves/{{moveId}}/members", "host": ["{{baseUrl}}"], "path": ["moves", "{{moveId}}", "members"] }
+          }
+        },
+        {
+          "name": "Update Collaborator Role",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"Viewer\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/moves/{{moveId}}/members/{{memberId}}", "host": ["{{baseUrl}}"], "path": ["moves", "{{moveId}}", "members", "{{memberId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "08. Budget & Expenses",
+      "item": [
+        {
+          "name": "Create Expense",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('expenseId', json.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Moving Truck Rental Deposit\",\n  \"category\": \"Truck Rental\",\n  \"estimatedCost\": 850,\n  \"actualCost\": 900,\n  \"isPaid\": true,\n  \"receiptUrl\": \"https://example.com/receipt.pdf\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/moves/{{moveId}}/expenses", "host": ["{{baseUrl}}"], "path": ["moves", "{{moveId}}", "expenses"] }
+          }
+        },
+        {
+          "name": "List Expenses & Variance",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/moves/{{moveId}}/expenses", "host": ["{{baseUrl}}"], "path": ["moves", "{{moveId}}", "expenses"] }
+          }
+        },
+        {
+          "name": "Update Expense",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actualCost\": 890\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/expenses/{{expenseId}}", "host": ["{{baseUrl}}"], "path": ["expenses", "{{expenseId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "09. Service Bookings",
+      "item": [
+        {
+          "name": "Create Service Booking",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.environment.set('bookingId', json.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceType\": \"Electricity Transfer\",\n  \"providerName\": \"Puget Sound Energy\",\n  \"scheduledDate\": \"2026-12-14T10:00:00.000Z\",\n  \"status\": \"Confirmed\",\n  \"contactPhone\": \"+1 888-225-5773\",\n  \"cost\": 50,\n  \"notes\": \"Activation scheduled for morning prior to move-in\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/moves/{{moveId}}/bookings", "host": ["{{baseUrl}}"], "path": ["moves", "{{moveId}}", "bookings"] }
+          }
+        },
+        {
+          "name": "List Service Bookings",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/moves/{{moveId}}/bookings", "host": ["{{baseUrl}}"], "path": ["moves", "{{moveId}}", "bookings"] }
+          }
+        },
+        {
+          "name": "Update Booking Status to Completed",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Completed\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/bookings/{{bookingId}}", "host": ["{{baseUrl}}"], "path": ["bookings", "{{bookingId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Readiness Dashboard & Analytics",
+      "item": [
+        {
+          "name": "Get Smart Readiness Dashboard (4-Pillar Score)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/moves/{{moveId}}/dashboard", "host": ["{{baseUrl}}"], "path": ["moves", "{{moveId}}", "dashboard"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Moving Day Tracker",
+      "item": [
+        {
+          "name": "Get Moving Day Transit Status",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/moves/{{moveId}}/tracking", "host": ["{{baseUrl}}"], "path": ["moves", "{{moveId}}", "tracking"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. Activity Audit Timeline",
+      "item": [
+        {
+          "name": "Get Activity Timeline (Paginated)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/moves/{{moveId}}/activity?page=1&limit=20", "host": ["{{baseUrl}}"], "path": ["moves", "{{moveId}}", "activity"], "query": [{ "key": "page", "value": "1" }, { "key": "limit", "value": "20" }] }
+          }
+        }
+      ]
+    }
+  ]
+}
