@@ -1,9 +1,9 @@
 # MoveMate – Development Status Tracker
 
 **Project:** MoveMate – Intelligent Home Moving Coordinator  
-**Current Phase:** Phase 6 – Room, Box, and Inventory APIs (Completed)  
+**Current Phase:** Phase 7 – Responsibilities & Collaboration (Completed)  
 **Last Updated:** 2026-11-05  
-**Overall Status:** Phase 6 Complete (Awaiting User Approval for Phase 7)  
+**Overall Status:** Phase 7 Complete (Awaiting User Approval for Phase 8)  
 
 ---
 
@@ -17,56 +17,67 @@
 | **Phase 4** | Authentication & Security | **COMPLETED** | Register, Login, JWT verification, bcryptjs password hashing, Zod validation, auth rate limiting, and `/auth/me` protected route verified. |
 | **Phase 5** | Move & Task Management APIs | **COMPLETED** | Move & Task CRUD operations, ownership verification middleware, multi-tenant isolation, priority & essential task filters, overdue detection, member assignment checks, and activity logging verified. |
 | **Phase 6** | Room, Box & Inventory APIs | **COMPLETED** | Rooms with packing progress stats, Boxes with QR code labels & state machine, Inventory item associations, and search verified across 20 automated tests. |
-| **Phase 7** | Responsibilities & Collaboration | Pending | MoveMember invitations, role checks (Owner/Editor/Viewer), and task assignments verified. |
+| **Phase 7** | Responsibilities & Collaboration | **COMPLETED** | Member invitation by email, Editor/Viewer role enforcement, owner protection, task assignment boundary checks, member task completion metrics, and activity logs verified across 20 tests. |
 | **Phase 8** | Readiness Engine, Budget & Tracking | Pending | 4-pillar readiness calculation, budget difference calculations, moving day state machine verified. |
 | **Phase 9** | React Frontend & API Integration | Pending | Modern Tailwind CSS dashboard, all 15 pages functional with live API communication. |
 | **Phase 10** | Testing, Documentation & Final Polish | Pending | End-to-end automated testing, Postman test guide, comprehensive README with screenshots. |
 
 ---
 
-## 2. Phase 6 Accomplishments
+## 2. Phase 7 Accomplishments
 
-- [x] **Reusable Authorization Factory (`src/middleware/moveAuthMiddleware.js`):**
-  - Implemented `checkChildResourceAccess(paramName, findParentMoveId, entityLabel, requiredRole)` factory supporting rooms, boxes, and items.
-  - Dynamically traverses up the data model hierarchy to verify ownership/membership without redundant code.
-- [x] **Room Management APIs (`src/services/roomService.js`, `src/controllers/roomController.js`, `src/routes/roomRoutes.js`):**
-  - `POST /api/v1/moves/:moveId/rooms`: Creates room inside a move; unique name constraint enforced per move (409 Conflict on duplicate).
-  - `GET /api/v1/moves/:moveId/rooms`: Enriches each room with live packing metrics (`totalBoxes`, `packedBoxes`, `totalItems`, `packedItems`, `packingProgress`).
-  - `GET /api/v1/rooms/:roomId`: Retrieves single room with real-time packing progress.
-  - `PATCH /api/v1/rooms/:roomId`: Renames or re-styles room color code with hex validation.
-  - `DELETE /api/v1/rooms/:roomId`: Safe deletion blocks removal (409 Conflict) if boxes are assigned to avoid orphaned belongings; cascades deletion of unboxed room items once boxes are removed.
-- [x] **Box Management APIs & QR Code Generation (`src/services/boxService.js`, `src/utils/qrCodeHelper.js`):**
-  - `POST /api/v1/moves/:moveId/boxes`: Generates auto-incrementing `boxNumber` per move, builds deterministic label (e.g. `BOX-KIT-001`), and renders printable Base64 DataURL PNG QR code.
-  - **Zero-Credential QR Payload Security:** QR payload strictly encodes non-sensitive identifiers `{ app: "MoveMate", boxLabel, moveId, boxId }` — zero passwords, tokens, or emails exposed.
-  - `GET /api/v1/moves/:moveId/boxes`: Lists boxes with optional search, status filtering, and pagination.
-  - `GET /api/v1/boxes/:boxId`: Returns box details together with populated array of inventory items inside it.
-  - `PATCH /api/v1/boxes/:boxId`: Enforces directed state machine (`Not Started` → `Packing` → `Packed` → `Loaded` → `In Transit` → `Delivered`; `Missing` with recovery to `Delivered`).
-  - `DELETE /api/v1/boxes/:boxId`: Disassociates contained inventory items (`boxId = null`, `isPacked = false`) without deleting the underlying belongings.
-- [x] **Inventory Management APIs (`src/services/inventoryService.js`):**
-  - `POST /api/v1/rooms/:roomId/items`: Adds belongings to a room; optionally binds item to a box within the same room.
-  - `GET /api/v1/rooms/:roomId/items`: Search items by name, filter by packed status (`isPacked=true/false`) or box assignment.
-  - `GET /api/v1/items/:itemId`: Details item with populated room and box metadata.
-  - `PATCH /api/v1/items/:itemId`: Automatically marks `isPacked = true` when item is placed in a box, and resets `isPacked = false` when box is unassigned.
-  - `DELETE /api/v1/items/:itemId`: Removes item and logs audit trail.
-- [x] **Activity Logging:** Comprehensive audit events recorded for `ROOM_CREATED`, `ROOM_UPDATED`, `ROOM_DELETED`, `BOX_CREATED`, `BOX_UPDATED`, `BOX_DELIVERED`, `BOX_MISSING`, `BOX_DELETED`, `ITEM_ADDED`, `ITEM_UPDATED`, and `ITEM_DELETED`.
-- [x] **Automated Integration Testing:** Created `backend/tests/rooms-boxes-inventory.test.js` verifying 20 comprehensive scenarios. All 20 passed. Full suite passed (49/49 tests total).
+- [x] **Collaborator Invitation API (`POST /api/v1/moves/:moveId/members`):**
+  - Invites existing registered users by email to join a moving plan.
+  - Supports role assignment: `Editor` or `Viewer`.
+  - **Self-Invitation Prevention:** Prohibits the plan owner from inviting themselves (`400 Bad Request`).
+  - **Duplicate Membership Prevention:** Rejects duplicate invitations with descriptive `409 Conflict`.
+  - **Unregistered Email Handling:** Returns informative `404 Not Found` directing uninvited users to register first.
+  - Automatically records `invitedBy` reference pointing to the inviter.
+- [x] **Member Listing with Task Completion Statistics (`GET /api/v1/moves/:moveId/members`):**
+  - Lists all authorized members with populated user profiles (`name`, `email`, `phone`) and inviter info.
+  - Enriches every member with live assigned task metrics:
+    - `totalTasks`: Total tasks assigned to the member.
+    - `completedTasks`: Number of finished tasks.
+    - `pendingTasks`: Number of incomplete tasks.
+    - `overdueTasks`: Number of incomplete tasks past their due date.
+    - `completionRate`: Calculated percentage (0–100%).
+- [x] **Role Hierarchy & Privilege Enforcement:**
+  - `Viewer` role: Granted read access to tasks, rooms, boxes, items, and member listings; strictly barred from creating or modifying tasks/resources (`403 Forbidden`).
+  - `Editor` role: Granted read and write permissions to create tasks, update box packing, and manage belongings.
+  - `Owner` role: Holds exclusive authority to invite members, update roles, remove collaborators, or delete the moving plan.
+- [x] **Owner Protection Guarantee:**
+  - Owner role cannot be demoted or changed via `PATCH /api/v1/moves/:moveId/members/:memberId` (`400 Bad Request`).
+  - Owner cannot be removed via `DELETE /api/v1/moves/:moveId/members/:memberId` (`400 Bad Request`).
+- [x] **Safe Member Removal & Task Clean-up (`DELETE /api/v1/moves/:moveId/members/:memberId`):**
+  - When a collaborator is removed, all tasks previously assigned to them are safely unassigned (`assignedTo: null`), eliminating lingering references to non-members.
+- [x] **Task Assignment Boundary Enforcement:**
+  - Verified `validateMemberAssignment()` prevents assigning tasks to non-members or strangers (`400 Bad Request`).
+- [x] **Activity Logging:**
+  - Comprehensive audit records logged for `MEMBER_INVITED`, `MEMBER_ROLE_UPDATED`, and `MEMBER_REMOVED`.
+- [x] **Automated Integration Testing:**
+  - Created `backend/tests/collaboration.test.js` verifying 20 comprehensive scenarios.
+  - All 20 passed. Complete test suite passes (69/69 tests total across Phases 2–7).
 
 ---
 
 ## 3. Known Issues & Blockers
 
-- None. All Room, Box, and Inventory endpoints verified and fully functional against live MongoDB Atlas.
+- None. All collaboration and responsibility features are verified and functional against live MongoDB Atlas.
 
 ---
 
-## 4. Next Steps (Phase 7 Preview)
+## 4. Next Steps (Phase 8 Preview)
 
 Once approved by the developer:
-1. Implement Member Invitation API (`POST /api/v1/moves/:moveId/members`):
-   - Invite users by email to join a moving plan.
-   - Assign roles: `Editor` or `Viewer`.
-   - Prevent owner self-invitation or duplicate membership.
-2. Implement Member Management APIs (`GET /api/v1/moves/:moveId/members`, `PATCH /api/v1/moves/:moveId/members/:memberId`, `DELETE /api/v1/moves/:moveId/members/:memberId`):
-   - Member listing with assigned task completion stats.
-   - Guard owner from role downgrade or removal.
-3. Write automated integration tests covering collaboration workflows.
+1. **Readiness Calculation Engine** (`GET /api/v1/moves/:moveId/dashboard`):
+   - 4-pillar weighted readiness score (Essential Tasks 35%, Box Packing 30%, Inventory 20%, Services 15%).
+   - Summary statistics for tasks, boxes, inventory, and budget.
+2. **Moving Day Live Tracker** (`GET /api/v1/moves/:moveId/tracking`):
+   - Real-time transit delivery status breakdown.
+   - High-priority and fragile boxes tracker.
+3. **Budget & Expense Management APIs** (`/api/v1/moves/:moveId/expenses`, `/api/v1/expenses/:expenseId`):
+   - Category totals, estimated vs. actual variance calculations.
+4. **Service Bookings APIs** (`/api/v1/moves/:moveId/bookings`, `/api/v1/bookings/:bookingId`):
+   - Utilities and mover bookings tracking.
+5. **Activity Log Timeline API** (`GET /api/v1/moves/:moveId/activity`):
+   - Paginated historical audit trail of all moving events.

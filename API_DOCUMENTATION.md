@@ -416,14 +416,130 @@ Removes an inventory item with audit logging.
 ## 8. Member & Responsibility Endpoints
 
 ### `GET /moves/:moveId/members`
-Lists all members associated with a move, their assigned role, and task completion metrics.
+Lists all members associated with a moving plan, their assigned role, and member-wise task completion metrics.
+- **Access:** Viewer, Editor, or Owner
+- **Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Move members retrieved successfully",
+  "data": [
+    {
+      "_id": "6729m100...",
+      "moveId": "6729c123...",
+      "user": {
+        "_id": "6729u001...",
+        "name": "Jane Doe",
+        "email": "jane@example.com",
+        "phone": "+1234567890"
+      },
+      "role": "Owner",
+      "invitedBy": null,
+      "createdAt": "2026-11-05T08:00:00.000Z",
+      "taskStats": {
+        "totalTasks": 4,
+        "completedTasks": 3,
+        "pendingTasks": 1,
+        "overdueTasks": 0,
+        "completionRate": 75
+      }
+    },
+    {
+      "_id": "6729m101...",
+      "moveId": "6729c123...",
+      "user": {
+        "_id": "6729u002...",
+        "name": "John Helper",
+        "email": "john@example.com",
+        "phone": "+1987654321"
+      },
+      "role": "Editor",
+      "invitedBy": {
+        "_id": "6729u001...",
+        "name": "Jane Doe",
+        "email": "jane@example.com"
+      },
+      "createdAt": "2026-11-05T09:30:00.000Z",
+      "taskStats": {
+        "totalTasks": 2,
+        "completedTasks": 1,
+        "pendingTasks": 1,
+        "overdueTasks": 0,
+        "completionRate": 50
+      }
+    }
+  ]
+}
+```
 
 ### `POST /moves/:moveId/members`
-Invites a user to a move by registered email with a specified role (`Editor` | `Viewer`).
-- **Request Body:** `{ "email": "collaborator@example.com", "role": "Editor" }`
+Invites an existing registered user to a move by email with an assigned role (`Editor` | `Viewer`).
+- **Access:** Owner only
+- **Validation Rules:**
+  - `email`: Required valid email address. Target user must already have a registered account (`404 Not Found` if missing).
+  - Owner self-invitation prohibited (`400 Bad Request`).
+  - Duplicate membership prohibited (`409 Conflict`).
+- **Request Body:**
+```json
+{
+  "email": "collaborator@example.com",
+  "role": "Editor"
+}
+```
+- **Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Member invited successfully",
+  "data": {
+    "_id": "6729m101...",
+    "moveId": "6729c123...",
+    "userId": {
+      "_id": "6729u002...",
+      "name": "John Helper",
+      "email": "collaborator@example.com",
+      "phone": ""
+    },
+    "role": "Editor",
+    "invitedBy": {
+      "_id": "6729u001...",
+      "name": "Jane Doe",
+      "email": "jane@example.com"
+    },
+    "createdAt": "2026-11-05T09:30:00.000Z"
+  }
+}
+```
+
+### `PATCH /moves/:moveId/members/:memberId`
+Updates a collaborator's role between `Editor` and `Viewer`.
+- **Access:** Owner only
+- **Owner Protection:** Attempting to alter the Owner's role returns `400 Bad Request` ("Cannot change the role of the moving plan owner").
+- **Request Body:**
+```json
+{
+  "role": "Viewer"
+}
+```
+- **Response (200 OK)**
 
 ### `DELETE /moves/:moveId/members/:memberId`
-Removes a member from the moving plan.
+Removes a collaborator from the moving plan.
+- **Access:** Owner only
+- **Owner Protection:** Attempting to remove the Owner returns `400 Bad Request` ("Cannot remove the owner of the moving plan").
+- **Safe Task Reassignment:** Automatically unassigns all tasks previously assigned to the removed collaborator (`assignedTo: null`) to prevent orphaned assignments.
+- **Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Member removed from moving plan",
+  "data": {
+    "removed": true,
+    "memberId": "6729m101...",
+    "userName": "John Helper"
+  }
+}
+```
 
 ---
 
