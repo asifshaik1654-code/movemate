@@ -52,3 +52,4 @@ Execute requests sequentially from top to bottom:
 2. Click **Run collection** (Collection Runner).
 3. Ensure **MoveMate Local Environment** is selected.
 4. Click **Run MoveMate REST API Collection**. All tests will execute and pass sequentially!
+
