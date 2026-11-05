@@ -1,5 +1,15 @@
 const mongoose = require('mongoose');
+const dns = require('dns');
 const env = require('./env');
+
+// Configure reliable DNS servers for SRV resolution (fixes Windows querySrv ECONNREFUSED on local ISPs)
+if (env.MONGODB_URI && env.MONGODB_URI.startsWith('mongodb+srv://')) {
+  try {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+  } catch (dnsErr) {
+    console.warn('DNS server fallback warning:', dnsErr.message);
+  }
+}
 
 let isConnected = false;
 
@@ -60,3 +70,4 @@ module.exports = {
   getDBStatus,
   isConnected: () => isConnected,
 };
+
