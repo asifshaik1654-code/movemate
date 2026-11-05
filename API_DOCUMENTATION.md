@@ -546,52 +546,305 @@ Removes a collaborator from the moving plan.
 ## 9. Dashboard & Moving Day Tracking Endpoints
 
 ### `GET /moves/:moveId/dashboard`
-Returns calculated metrics for the Readiness Dashboard:
-- `readinessScore`: Weighted percentage (0 - 100)
-- `pillarBreakdown`: Detailed scores for Essential Tasks, Box Packing, Inventory, Services
-- `tasksSummary`: Total, Completed, Pending, Overdue, Incomplete Essential
-- `boxesSummary`: Total, Packed, Loaded, In Transit, Delivered, Missing
-- `inventorySummary`: Total items, Packed items, Unpacked items
-- `budgetSummary`: Total estimated, Total actual, Difference
+Returns calculated metrics for the Smart Moving Readiness Dashboard, computing a 0–100 score based on 4 weighted pillars.
+- **Access:** Viewer, Editor, or Owner
+- **4-Pillar Calculation Formulas:**
+  - **Essential Tasks ($35\%$)**: `(completedEssential / totalEssential) * 35` (falls back to regular tasks if no essential tasks are designated).
+  - **Box Packing ($30\%$)**: `(packedBoxes / totalBoxes) * 30` (includes `Packed`, `Loaded`, `In Transit`, `Delivered`).
+  - **Room Inventory ($20\%$)**: `(packedItems / totalItems) * 20`.
+  - **Utility & Services ($15\%$)**: `(confirmedOrCompleted / totalServices) * 15`.
+- **Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Move readiness dashboard retrieved successfully",
+  "data": {
+    "move": {
+      "_id": "6729c123...",
+      "title": "Downtown to Sunny Suburbs",
+      "status": "In Progress"
+    },
+    "readinessScore": 58,
+    "readinessStatus": "In Progress",
+    "pillarBreakdown": {
+      "essentialTasks": {
+        "weightPercentage": 35,
+        "scoreContribution": 17.5,
+        "progressPercentage": 50,
+        "total": 2,
+        "completed": 1
+      },
+      "boxPacking": {
+        "weightPercentage": 30,
+        "scoreContribution": 15,
+        "progressPercentage": 50,
+        "total": 2,
+        "packed": 1
+      },
+      "inventoryPacking": {
+        "weightPercentage": 20,
+        "scoreContribution": 10,
+        "progressPercentage": 50,
+        "total": 2,
+        "packed": 1
+      },
+      "utilityServices": {
+        "weightPercentage": 15,
+        "scoreContribution": 15,
+        "progressPercentage": 100,
+        "total": 2,
+        "confirmedOrCompleted": 2
+      }
+    },
+    "taskStats": {
+      "total": 2,
+      "completed": 1,
+      "pending": 1,
+      "overdue": 0,
+      "essentialTotal": 2,
+      "essentialCompleted": 1
+    },
+    "boxStats": {
+      "total": 2,
+      "byStatus": {
+        "Not Started": 1,
+        "Packed": 1
+      },
+      "fragileCount": 1,
+      "priorityCount": 1
+    },
+    "inventoryStats": {
+      "total": 2,
+      "packed": 1,
+      "unpacked": 1,
+      "fragileCount": 1,
+      "totalEstimatedValue": 150
+    },
+    "budgetStats": {
+      "totalEstimatedCost": 1200,
+      "totalActualCost": 1350,
+      "variance": 150,
+      "isOverBudget": true
+    },
+    "serviceStats": {
+      "total": 2,
+      "byStatus": {
+        "Confirmed": 1,
+        "Completed": 1
+      }
+    },
+    "alerts": [
+      { "type": "info", "message": "Current moving expenses exceed estimate by $150." }
+    ]
+  }
+}
+```
 
 ### `GET /moves/:moveId/tracking`
-Returns real-time moving day tracker:
-- Total boxes by status (`Packed`, `Loaded`, `In Transit`, `Delivered`, `Missing`)
-- Room-by-room delivery progress
-- List of high-priority & fragile boxes awaiting delivery
+Returns real-time moving day logistics data tracking boxes through origin, transit, and destination stages.
+- **Access:** Viewer, Editor, or Owner
+- **Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Moving day tracking data retrieved successfully",
+  "data": {
+    "totalBoxes": 4,
+    "deliveredBoxes": 2,
+    "deliveryPercentage": 50,
+    "statusCounts": {
+      "Packed": 1,
+      "Loaded": 0,
+      "In Transit": 1,
+      "Delivered": 2,
+      "Missing": 0
+    },
+    "transitStages": {
+      "atOriginCount": 1,
+      "inTransitCount": 1,
+      "deliveredCount": 2,
+      "missingCount": 0
+    },
+    "fragileBoxes": [
+      {
+        "_id": "6729b101...",
+        "boxLabel": "BOX-KIT-002",
+        "description": "Fine crystal glassware",
+        "status": "In Transit",
+        "isFragile": true
+      }
+    ],
+    "priorityBoxes": [...],
+    "missingBoxes": [],
+    "roomDeliveryProgress": [
+      {
+        "_id": "6729r100...",
+        "name": "Kitchen",
+        "totalBoxes": 2,
+        "deliveredBoxes": 1,
+        "progressPercentage": 50
+      }
+    ]
+  }
+}
+```
 
 ---
 
 ## 10. Budget & Service Bookings Endpoints
 
 ### `GET /moves/:moveId/expenses`
-Lists all expense line items with category totals and budget variance.
+Lists all expenses with complete financial variance analysis.
+- **Access:** Viewer, Editor, or Owner
+- **Query Params:** `category`, `isPaid`, `search`, `page`, `limit`
+- **Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Expenses retrieved successfully",
+  "data": {
+    "expenses": [...],
+    "summary": {
+      "totalEstimatedCost": 1350,
+      "totalActualCost": 1450,
+      "variance": 100,
+      "isOverBudget": true,
+      "totalPaid": 1350,
+      "totalUnpaid": 100,
+      "categoryBreakdown": {
+        "Movers": { "estimated": 1200, "actual": 1350, "count": 1 },
+        "Packing Supplies": { "estimated": 150, "actual": 100, "count": 1 }
+      }
+    },
+    "pagination": { "total": 2, "page": 1, "limit": 100, "pages": 1 }
+  }
+}
+```
 
 ### `POST /moves/:moveId/expenses`
-Records an estimated or actual expense.
+Records an estimated or actual expense line item.
+- **Access:** Editor or Owner
+- **Request Body:**
+```json
+{
+  "category": "Movers",
+  "title": "Professional Moving Van Deposit",
+  "estimatedCost": 1200,
+  "actualCost": 1350,
+  "isPaid": true,
+  "receiptUrl": ""
+}
+```
+- **Response (201 Created)**
+
+### `GET /expenses/:expenseId`
+Details a single expense item.
+- **Access:** Viewer, Editor, or Owner
+- **Response (200 OK)**
 
 ### `PATCH /expenses/:expenseId`
-Updates cost, category, or payment status.
+Updates expense details (costs, paid status, category).
+- **Access:** Editor or Owner
+- **Response (200 OK)**
 
 ### `DELETE /expenses/:expenseId`
 Removes an expense line item.
+- **Access:** Editor or Owner
+- **Response (200 OK)**
+
+---
 
 ### `GET /moves/:moveId/bookings`
-Lists utility and mover service bookings.
+Lists utility and mover service bookings sorted chronologically by `scheduledDate`.
+- **Access:** Viewer, Editor, or Owner
+- **Query Params:** `serviceType`, `status`, `search`
+- **Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Service bookings retrieved successfully",
+  "data": {
+    "bookings": [...],
+    "summary": {
+      "totalBookings": 2,
+      "confirmedOrCompleted": 2,
+      "statusCounts": {
+        "Booked": 0,
+        "Confirmed": 1,
+        "Completed": 1,
+        "Inquired": 0,
+        "Cancelled": 0
+      },
+      "totalCost": 1250
+    }
+  }
+}
+```
 
 ### `POST /moves/:moveId/bookings`
-Records a booking (e.g., Internet Transfer, Electricity, Truck).
+Records a utility transfer or mover booking.
+- **Access:** Editor or Owner
+- **Request Body:**
+```json
+{
+  "serviceType": "Electricity Transfer",
+  "providerName": "City Power & Electric",
+  "scheduledDate": "2026-12-28T09:00:00Z",
+  "status": "Booked",
+  "confirmationNumber": "PWR-44912",
+  "cost": 50,
+  "notes": "Transfer electric meter on moving morning"
+}
+```
+- **Response (201 Created)**
+
+### `GET /bookings/:bookingId`
+Details a single service booking.
+- **Access:** Viewer, Editor, or Owner
+- **Response (200 OK)**
 
 ### `PATCH /bookings/:bookingId`
-Updates booking status (`Booked`, `Confirmed`, `Completed`, `Cancelled`).
+Updates booking status, date, or cost.
+- **Access:** Editor or Owner
+- **Response (200 OK)**
 
 ### `DELETE /bookings/:bookingId`
-Deletes a booking record.
+Deletes a service booking record.
+- **Access:** Editor or Owner
+- **Response (200 OK)**
 
 ---
 
 ## 11. Activity History Endpoints
 
 ### `GET /moves/:moveId/activity`
-Returns the recent audit timeline (who did what, and when) with pagination.
+Returns the recent audit timeline in descending chronological order (`-createdAt`) with populated actor details.
+- **Access:** Viewer, Editor, or Owner
+- **Query Params:** `page`, `limit`, `entityType`, `action`
+- **Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Activity timeline retrieved successfully",
+  "data": {
+    "activities": [
+      {
+        "_id": "6729a100...",
+        "moveId": "6729c123...",
+        "userId": {
+          "_id": "6729u001...",
+          "name": "Jane Doe",
+          "email": "jane@example.com"
+        },
+        "action": "BOX_DELIVERED",
+        "details": "Box \"BOX-KIT-001\" status: Delivered",
+        "entityType": "Box",
+        "entityId": "6729b100...",
+        "createdAt": "2026-11-05T10:00:00.000Z"
+      }
+    ],
+    "pagination": { "total": 24, "page": 1, "limit": 20, "pages": 2 }
+  }
+}
+```
 

@@ -45,11 +45,18 @@ const createItem = async (roomId, userId, itemData) => {
     }
   }
 
-  const item = await InventoryItem.create({
+  const payload = {
     moveId: room.moveId,
     roomId,
     ...itemData
-  });
+  };
+
+  // If created with a boxId, auto-mark as packed unless explicitly specified
+  if (itemData.boxId && (itemData.isPacked === undefined || itemData.isPacked === null)) {
+    payload.isPacked = true;
+  }
+
+  const item = await InventoryItem.create(payload);
 
   await logActivity({
     moveId: room.moveId,

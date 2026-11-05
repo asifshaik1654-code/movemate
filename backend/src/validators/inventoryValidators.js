@@ -8,7 +8,7 @@ const createItemSchema = z.object({
     .max(100, 'Item name cannot exceed 100 characters'),
   quantity: z.coerce.number().int().min(1, 'Quantity must be at least 1').optional().default(1),
   isFragile: z.boolean().optional().default(false),
-  isPacked: z.boolean().optional().default(false),
+  isPacked: z.boolean().optional(),
   estimatedValue: z.coerce.number().min(0, 'Estimated value cannot be negative').optional().default(0),
   boxId: z.string().nullable().optional(),
   notes: z.string().trim().optional().default('')

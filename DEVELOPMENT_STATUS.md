@@ -1,9 +1,9 @@
 # MoveMate – Development Status Tracker
 
 **Project:** MoveMate – Intelligent Home Moving Coordinator  
-**Current Phase:** Phase 7 – Responsibilities & Collaboration (Completed)  
+**Current Phase:** Phase 8 – Smart Dashboard, Moving Day Tracker, Budget & Services (Completed)  
 **Last Updated:** 2026-11-05  
-**Overall Status:** Phase 7 Complete (Awaiting User Approval for Phase 8)  
+**Overall Status:** Phase 8 Complete (Awaiting User Approval for Phase 9)  
 
 ---
 
@@ -18,66 +18,71 @@
 | **Phase 5** | Move & Task Management APIs | **COMPLETED** | Move & Task CRUD operations, ownership verification middleware, multi-tenant isolation, priority & essential task filters, overdue detection, member assignment checks, and activity logging verified. |
 | **Phase 6** | Room, Box & Inventory APIs | **COMPLETED** | Rooms with packing progress stats, Boxes with QR code labels & state machine, Inventory item associations, and search verified across 20 automated tests. |
 | **Phase 7** | Responsibilities & Collaboration | **COMPLETED** | Member invitation by email, Editor/Viewer role enforcement, owner protection, task assignment boundary checks, member task completion metrics, and activity logs verified across 20 tests. |
-| **Phase 8** | Readiness Engine, Budget & Tracking | Pending | 4-pillar readiness calculation, budget difference calculations, moving day state machine verified. |
+| **Phase 8** | Readiness Engine, Budget & Tracking | **COMPLETED** | 4-pillar readiness score engine (35/30/20/15), Moving Day live tracker, Expense budget variance calculation, Service Bookings CRUD, and paginated Activity Log verified across 20 tests. |
 | **Phase 9** | React Frontend & API Integration | Pending | Modern Tailwind CSS dashboard, all 15 pages functional with live API communication. |
 | **Phase 10** | Testing, Documentation & Final Polish | Pending | End-to-end automated testing, Postman test guide, comprehensive README with screenshots. |
 
 ---
 
-## 2. Phase 7 Accomplishments
+## 2. Phase 8 Accomplishments
 
-- [x] **Collaborator Invitation API (`POST /api/v1/moves/:moveId/members`):**
-  - Invites existing registered users by email to join a moving plan.
-  - Supports role assignment: `Editor` or `Viewer`.
-  - **Self-Invitation Prevention:** Prohibits the plan owner from inviting themselves (`400 Bad Request`).
-  - **Duplicate Membership Prevention:** Rejects duplicate invitations with descriptive `409 Conflict`.
-  - **Unregistered Email Handling:** Returns informative `404 Not Found` directing uninvited users to register first.
-  - Automatically records `invitedBy` reference pointing to the inviter.
-- [x] **Member Listing with Task Completion Statistics (`GET /api/v1/moves/:moveId/members`):**
-  - Lists all authorized members with populated user profiles (`name`, `email`, `phone`) and inviter info.
-  - Enriches every member with live assigned task metrics:
-    - `totalTasks`: Total tasks assigned to the member.
-    - `completedTasks`: Number of finished tasks.
-    - `pendingTasks`: Number of incomplete tasks.
-    - `overdueTasks`: Number of incomplete tasks past their due date.
-    - `completionRate`: Calculated percentage (0–100%).
-- [x] **Role Hierarchy & Privilege Enforcement:**
-  - `Viewer` role: Granted read access to tasks, rooms, boxes, items, and member listings; strictly barred from creating or modifying tasks/resources (`403 Forbidden`).
-  - `Editor` role: Granted read and write permissions to create tasks, update box packing, and manage belongings.
-  - `Owner` role: Holds exclusive authority to invite members, update roles, remove collaborators, or delete the moving plan.
-- [x] **Owner Protection Guarantee:**
-  - Owner role cannot be demoted or changed via `PATCH /api/v1/moves/:moveId/members/:memberId` (`400 Bad Request`).
-  - Owner cannot be removed via `DELETE /api/v1/moves/:moveId/members/:memberId` (`400 Bad Request`).
-- [x] **Safe Member Removal & Task Clean-up (`DELETE /api/v1/moves/:moveId/members/:memberId`):**
-  - When a collaborator is removed, all tasks previously assigned to them are safely unassigned (`assignedTo: null`), eliminating lingering references to non-members.
-- [x] **Task Assignment Boundary Enforcement:**
-  - Verified `validateMemberAssignment()` prevents assigning tasks to non-members or strangers (`400 Bad Request`).
-- [x] **Activity Logging:**
-  - Comprehensive audit records logged for `MEMBER_INVITED`, `MEMBER_ROLE_UPDATED`, and `MEMBER_REMOVED`.
+- [x] **Smart Moving Readiness Dashboard Engine (`GET /api/v1/moves/:moveId/dashboard`):**
+  - Implemented deterministic 4-pillar readiness index with exact architectural weights:
+    - **Pillar 1: Essential Tasks ($35\%$)**: `(completedEssential / totalEssential) * 35` (graceful fallback to general tasks if no essential tasks are designated).
+    - **Pillar 2: Box Packing Progress ($30\%$)**: `(packedBoxes / totalBoxes) * 30` (includes `Packed`, `Loaded`, `In Transit`, `Delivered`).
+    - **Pillar 3: Room Inventory Completion ($20\%$)**: `(packedItems / totalItems) * 20`.
+    - **Pillar 4: Utility & Service Bookings ($15\%$)**: `(confirmedOrCompleted / totalServices) * 15`.
+  - Generates integer score ($0 - 100\%$) and intuitive status category (`'Not Ready'`, `'In Progress'`, `'Almost Ready'`, `'Moving Ready'`).
+  - Safe handling of empty moving plans: returns $0\%$ readiness without errors or division by zero.
+  - Aggregates summaries for tasks, boxes, inventory, budget, and services, plus automated actionable alerts (overdue tasks, missing boxes, budget overruns).
+- [x] **Moving Day Real-Time Live Tracker (`GET /api/v1/moves/:moveId/tracking`):**
+  - Monitors boxes across the complete moving lifecycle: `Not Started` &rarr; `Packing` &rarr; `Packed` &rarr; `Loaded` &rarr; `In Transit` &rarr; `Delivered`.
+  - Calculates live `deliveryPercentage` ($0 - 100\%$).
+  - Groups logistics into physical stages: `atOrigin`, `inTransit`, `delivered`, and `missing`.
+  - Highlights `fragileBoxes` and `priorityBoxes` for special handling.
+  - Breakdowns room-by-room delivery progress.
+  - Instantly surfaces `missingBoxes` for rapid resolution on moving day.
+- [x] **Budget & Expense Management (`/api/v1/moves/:moveId/expenses`, `/api/v1/expenses/:expenseId`):**
+  - Full CRUD operations with Zod validation against `EXPENSE_CATEGORIES`.
+  - Computes `totalEstimatedCost`, `totalActualCost`, `variance` (`actual - estimated`), and `isOverBudget` boolean.
+  - Generates real-time category breakdown with per-category variance.
+  - Tracks paid vs. unpaid expenses.
+- [x] **Service Bookings Management (`/api/v1/moves/:moveId/bookings`, `/api/v1/bookings/:bookingId`):**
+  - Full CRUD operations supporting utility transfers (electricity, water, gas, internet) and mover bookings.
+  - Status management: `Inquired`, `Booked`, `Confirmed`, `Completed`, `Cancelled`.
+  - Chronological sorting by `scheduledDate`.
+- [x] **Activity History Timeline (`GET /api/v1/moves/:moveId/activity`):**
+  - Paginated historical audit trail with descending chronological sorting (`-createdAt`).
+  - Populates actor details (`name`, `email`) for complete auditability.
+- [x] **Security, Cascade Deletion & Multi-Tenant Boundaries:**
+  - Strict JWT authentication and role enforcement (`checkMoveAccess` and `checkChildResourceAccess`).
+  - Deleting a moving plan cascades deletion of all linked expenses and service bookings.
 - [x] **Automated Integration Testing:**
-  - Created `backend/tests/collaboration.test.js` verifying 20 comprehensive scenarios.
-  - All 20 passed. Complete test suite passes (69/69 tests total across Phases 2–7).
+  - Created `backend/tests/dashboard-tracker-budget.test.js` verifying 20 comprehensive scenarios.
+  - All 20 passed. Full test suite passing (**89 / 89 tests total across Phases 2–8**).
 
 ---
 
 ## 3. Known Issues & Blockers
 
-- None. All collaboration and responsibility features are verified and functional against live MongoDB Atlas.
+- None. All backend modules (Auth, Moves, Tasks, Rooms, Boxes, Inventory, Collaboration, Dashboard, Tracker, Budget, Services, Activity) are completely functional and verified against live MongoDB Atlas.
 
 ---
 
-## 4. Next Steps (Phase 8 Preview)
+## 4. Next Steps (Phase 9 Preview)
 
 Once approved by the developer:
-1. **Readiness Calculation Engine** (`GET /api/v1/moves/:moveId/dashboard`):
-   - 4-pillar weighted readiness score (Essential Tasks 35%, Box Packing 30%, Inventory 20%, Services 15%).
-   - Summary statistics for tasks, boxes, inventory, and budget.
-2. **Moving Day Live Tracker** (`GET /api/v1/moves/:moveId/tracking`):
-   - Real-time transit delivery status breakdown.
-   - High-priority and fragile boxes tracker.
-3. **Budget & Expense Management APIs** (`/api/v1/moves/:moveId/expenses`, `/api/v1/expenses/:expenseId`):
-   - Category totals, estimated vs. actual variance calculations.
-4. **Service Bookings APIs** (`/api/v1/moves/:moveId/bookings`, `/api/v1/bookings/:bookingId`):
-   - Utilities and mover bookings tracking.
-5. **Activity Log Timeline API** (`GET /api/v1/moves/:moveId/activity`):
-   - Paginated historical audit trail of all moving events.
+1. **Initialize React Frontend with Vite & Tailwind CSS**:
+   - Modern dashboard layout with responsive sidebar and top navigation.
+   - Lucide React icon integration.
+   - Axios client with JWT interceptor.
+2. **Implement Core Frontend Pages**:
+   - Authentication (Login, Register).
+   - Moving Plans Management (Dashboard, Plan Switcher, Create Plan).
+   - Smart Readiness Gauge & Moving Day Tracker.
+   - Task Board with Priority Filters.
+   - Room & Box Visual Explorer with QR Code print modals.
+   - Inventory Search & Assignment.
+   - Budget Tracker with Category Breakdown.
+   - Utility & Service Booking Hub.
+   - Team Collaboration & Invitation Manager.
